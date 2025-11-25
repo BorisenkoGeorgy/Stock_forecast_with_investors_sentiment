@@ -1,5 +1,6 @@
 *.parquet
 *.ini
+*.npy
 literature
 
 # Byte-compiled / optimized / DLL files
