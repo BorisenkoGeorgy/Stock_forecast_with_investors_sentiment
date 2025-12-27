@@ -6,7 +6,7 @@ class CNN(nn.Module):
         super().__init__()
         self.conv_module = nn.Sequential(
             *[
-                nn.Conv1d(5, 16, 5),
+                nn.Conv1d(2053, 16, 5),
                 nn.BatchNorm1d(16),
                 nn.ReLU(inplace=True),
                 nn.Conv1d(16, 32, 5),
@@ -15,11 +15,11 @@ class CNN(nn.Module):
                 nn.Conv1d(32, 64, 5, stride=2),
             ]
         )
-        self.proj = nn.Linear(64, 1)
+        self.proj = nn.Linear(64, 5)
 
     def forward(self, x: torch.Tensor):
-        x = self.conv_module(x).mean(-1)
-        return self.proj(x).squeeze()
+        x = self.conv_module(x.transpose(1, 2)).mean(-1)
+        return self.proj(x)
 
 
 class CRNN(nn.Module):
@@ -36,12 +36,12 @@ class CRNN(nn.Module):
             ]
         )
         self.rnn = nn.LSTM(32, 64, 2, batch_first=True)
-        self.proj = nn.Linear(64, 1)
+        self.proj = nn.Linear(64, 5)
 
     def forward(self, x: torch.Tensor):
-        x = self.conv_module(x).transpose(1, 2)
+        x = self.conv_module(x.transpose(1, 2))
         out, _ = self.rnn(x)
-        return self.proj(out[:,-1,:]).squeeze()
+        return self.proj(out[:,-1,:])
     
 class CBiRNN(nn.Module):
 
@@ -57,14 +57,14 @@ class CBiRNN(nn.Module):
             ]
         )
         self.rnn = nn.LSTM(32, 64, 2, batch_first=True, bidirectional=True)
-        self.proj = nn.Linear(128, 1)
+        self.proj = nn.Linear(128, 5)
 
     def forward(self, x: torch.Tensor):
         x = self.conv_module(x).transpose(1, 2)
         out, _ = self.rnn(x)
         out = out.reshape(*x.shape[:2], 64, 2)
         out = torch.cat([out[:, -1, :, 0], out[:, 0, :, 1]],dim=-1)
-        return self.proj(out).squeeze()
+        return self.proj(out)
     
 class CTransformer(nn.Module):
 
@@ -84,9 +84,9 @@ class CTransformer(nn.Module):
         )
         transformer_block = nn.TransformerEncoderLayer(64, 4, 64*4, batch_first=True)
         self.transformer = nn.TransformerEncoder(transformer_block, 4)
-        self.proj = nn.Linear(64, 1)
+        self.proj = nn.Linear(64, 5)
 
     def forward(self, x: torch.Tensor):
-        x = self.conv_module(x).transpose(1, 2)
+        x = self.conv_module(x.transpose(1, 2))
         out = self.transformer(x).mean(1)
-        return self.proj(out).squeeze()
+        return self.proj(out)
